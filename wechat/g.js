@@ -4,6 +4,7 @@ const sha1 = require('sha1');
 const getRawBody = require('raw-body');
 const Wechat = require('./wechat');
 const util = require('./util');
+const reply = require('./reply');
 
 module.exports = function(opts) {
     const wechat = new Wechat(opts);
@@ -32,25 +33,11 @@ module.exports = function(opts) {
                     limit: "1mb",
                     encoding: ctx.request.charset
                 });
-                const content = await util.parseXMLAsync(data);
-                const message = content.xml;
-                if (message.MsgType === 'event') {
-                    if(message.Event === 'subscribe') {
-                        ctx.type = 'application/xml';
-                        const reply = util.jsonToXml({
-                            xml: {
-                                ToUserName: message.FromUserName,
-                                FromUserName: message.ToUserName,
-                                CreateTime: Date.now(),
-                                MsgType: 'text',
-                                Content: '哈哈哈'
-                            }
-                        });
-                        console.log(reply);
-                        ctx.body = reply;
-                    }
-                }
-                
+                const content = await util.xmlToJson(data);
+                const xml = reply(content.xml);
+                ctx.status = 200;
+                ctx.type = 'application/xml';
+                ctx.body = xml;
             } catch (error) {
                 console.log(error);
             }

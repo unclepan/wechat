@@ -2,7 +2,7 @@
 
 const xml2js = require('xml2js');
 
-exports.parseXMLAsync = function(xml){
+exports.xmlToJson = function(xml){
     return new Promise(function(resolve, reject){
         xml2js.parseString(xml, {trim: true, explicitArray: false}, function (err, content) {
             if(err) {
