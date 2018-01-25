@@ -34,7 +34,7 @@ module.exports = function(opts) {
                     encoding: ctx.request.charset
                 });
                 const content = await util.xmlToJson(data);
-                const xml = reply(content.xml);
+                const xml = await reply(content.xml);
                 ctx.status = 200;
                 ctx.type = 'application/xml';
                 ctx.body = xml;

@@ -1,8 +1,12 @@
 'use strict'
 
 const tpl = require('./tpl');
+const path = require('path');
+const config = require('../config');
+const Wechat = require('./wechat');
+const wechatApi = new Wechat(config.wechat);
 
-module.exports = (message) => {
+module.exports = async (message) => {
     switch(message.MsgType){
         case 'event':
             switch(message.Event){
@@ -36,19 +40,50 @@ module.exports = (message) => {
             const content = message.Content;
             let reply = tpl.message.text(message, `你说的${content}太复杂了`);
             switch(content){
-                case '1':
-                    reply = tpl.message.text(message, "第一");
+                case '文本':
+                    reply = tpl.message.text(message, '我是文本消息');
                     break;
-                case '2':
-                    reply = tpl.message.text(message, "第二");
+                case '音乐':
+                    await wechatApi.uploadMaterial('thumb', path.join(__dirname, '../static/images/thumb.jpg'))
+                    .then((data) => {
+                        reply = tpl.message.music(message, {
+                            title: '音乐标题',
+                            description: '音乐描述',
+                            musicUrl: 'http://www.w3school.com.cn/i/song.mp3',
+                            hqMusicUrl: 'http://www.w3school.com.cn/i/song.mp3',
+                            mediaId: data.thumb_media_id,
+                        });
+                    });
                     break;
-                case '3':
-                    reply = tpl.message.text(message, "第三");
+                case '语音':
+                    await wechatApi.uploadMaterial('voice', path.join(__dirname, '../static/voices/song.mp3'))
+                    .then((data) => {
+                        reply = tpl.message.voice(message, {
+                            title: '语音标题',
+                            description: '语音描述',
+                            mediaId: data.media_id,
+                        });
+                    });
                     break;
-                case '4':
-                    reply = tpl.message.text(message, "第四");
+                case '视频':
+                    await wechatApi.uploadMaterial('video', path.join(__dirname, '../static/videos/movie.mp4'))
+                    .then((data) => {
+                        reply = tpl.message.video(message, {
+                            title: '视频标题',
+                            description: '我是视频描述',
+                            mediaId: data.media_id,
+                        });
+                    });
                     break;
-                case '5':
+                case '图片':
+                    await wechatApi.uploadMaterial('image', path.join(__dirname, '../static/images/1.jpg'))
+                    .then((data) => {
+                        reply = tpl.message.image(message, {
+                            mediaId: data.media_id,
+                        });
+                    });
+                    break;
+                case '图文':
                     reply = tpl.message.news(message, [
                         {
                             title: '来自36KR',
