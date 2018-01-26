@@ -2,10 +2,19 @@
 
 const request = require('request'); // request 是一个发送http请求的库
 const fs = require('fs');
+const _ = require('lodash');
+
 const prefix = 'https://api.weixin.qq.com/cgi-bin/';
 const api = {
     accessToken: `${prefix}token?grant_type=client_credential`,
-    upload: `${prefix}media/upload?`
+    temporary: {
+        upload: `${prefix}media/upload?`,
+    },
+    permanent: {
+        upload: `${prefix}material/add_material?`, // 其他类型永久素材
+        uploadNews: `${prefix}material/add_news?`, // 永久图文素材
+        uploadNewsPic: `${prefix}media/uploadimg?`, // 图文消息内的图片获取URL
+    }
 };
 
 function Wechat(opts) {
@@ -80,7 +89,7 @@ Wechat.prototype.updateAccessToken = function(data) { // 更新票据的方法
     });
 }
 
-Wechat.prototype.uploadMaterial = function(type, filepath) { // 新增临时素材
+Wechat.prototype.uploadtTemporaryMaterial = function(type, filepath) { // 新增临时素材
     const that = this;
     const form = {
         media: fs.createReadStream(filepath)
@@ -88,13 +97,13 @@ Wechat.prototype.uploadMaterial = function(type, filepath) { // 新增临时素�
     return new Promise(function(resolve, reject) {
         that.fetchAccessToken()
         .then((data) => {
-            const url = `${api.upload}access_token=${data.access_token}&type=${type}`;
+            const url = `${api.temporary.upload}access_token=${data.access_token}&type=${type}`;
             request({method: 'POST', url, formData: form, json: true}, (error, response, body) => {
                 if (!error && response.statusCode == 200) {
                     if (body) {
                         resolve(body); 
                     } else {
-                        throw new Error('Upload material fails');
+                        throw new Error('upload temporary material fails');
                     }
                 }
             });
@@ -108,4 +117,51 @@ Wechat.prototype.uploadMaterial = function(type, filepath) { // 新增临时素�
     });
 }
 
+Wechat.prototype.uploadtPermanentMaterial = function(type, material, permanent) { // 新增永久素材
+    const that = this;
+    let form = {};
+    let uploadUrl = `${api.permanent.upload}type=${type}&`;
+    _.extend(form, permanent);
+    if (type === 'pic') {
+        uploadUrl = api.permanent.uploadNewsPic;
+    }
+    if (type === 'news') {
+        uploadUrl = api.permanent.uploadNews;
+        form = material;
+    } else {
+        form.media = fs.createReadStream(material);
+    }
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${uploadUrl}access_token=${data.access_token}`;
+            form.access_token = data.access_token;
+            const options = {
+                method: 'POST', 
+                url: url, 
+                json: true
+            };
+            if (type === 'news') {
+                options.body = form;
+            } else {
+                options.formData = form;
+            }
+            request(options, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('upload permanent material fails');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
 module.exports = Wechat;
