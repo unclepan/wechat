@@ -44,7 +44,7 @@ module.exports = async (message) => {
                     reply = tpl.message.text(message, '我是文本消息');
                     break;
                 case '音乐':
-                    await wechatApi.uploadtTemporaryMaterial('thumb', path.join(__dirname, '../static/images/thumb.jpg'))
+                    await wechatApi.uploadTemporaryMaterial('thumb', path.join(__dirname, '../static/images/thumb.jpg'))
                     .then((data) => {
                         reply = tpl.message.music(message, {
                             title: '音乐标题',
@@ -56,7 +56,7 @@ module.exports = async (message) => {
                     });
                     break;
                 case '语音':
-                    await wechatApi.uploadtTemporaryMaterial('voice', path.join(__dirname, '../static/voices/song.mp3'))
+                    await wechatApi.uploadTemporaryMaterial('voice', path.join(__dirname, '../static/voices/song.mp3'))
                     .then((data) => {
                         reply = tpl.message.voice(message, {
                             title: '语音标题',
@@ -66,7 +66,7 @@ module.exports = async (message) => {
                     });
                     break;
                 case '视频':
-                    await wechatApi.uploadtTemporaryMaterial('video', path.join(__dirname, '../static/videos/movie.mp4'))
+                    await wechatApi.uploadTemporaryMaterial('video', path.join(__dirname, '../static/videos/movie.mp4'))
                     .then((data) => {
                         reply = tpl.message.video(message, {
                             title: '视频标题',
@@ -76,7 +76,7 @@ module.exports = async (message) => {
                     });
                     break;
                 case '图片':
-                    await wechatApi.uploadtTemporaryMaterial('image', path.join(__dirname, '../static/images/1.jpg'))
+                    await wechatApi.uploadTemporaryMaterial('image', path.join(__dirname, '../static/images/1.jpg'))
                     .then((data) => {
                         reply = tpl.message.image(message, {
                             mediaId: data.media_id,
@@ -100,9 +100,8 @@ module.exports = async (message) => {
                     ]);
                     break;
                 case '永久图片':
-                    await wechatApi.uploadtPermanentMaterial('image', path.join(__dirname, '../static/images/2.jpg'))
+                    await wechatApi.uploadPermanentMaterial('image', path.join(__dirname, '../static/images/2.jpg'))
                     .then((data) => {
-                        console.log(data, 12345);
                         reply = tpl.message.image(message, {
                             mediaId: data.media_id,
                         });
@@ -113,16 +112,66 @@ module.exports = async (message) => {
                         title: '上传永久视频文件的标题',
                         introduction: '上传永久视频文件的描述',
                     });
-                    await wechatApi.uploadtPermanentMaterial('video', path.join(__dirname, '../static/videos/movie.mp4'), {description})
+                    await wechatApi.uploadPermanentMaterial('video', path.join(__dirname, '../static/videos/movie.mp4'), {description})
                     .then((data) => {
-                        console.log(data);
                         reply = tpl.message.video(message, {
                             title: '视频标题',
                             description: '我是视频描述',
                             mediaId: data.media_id,
                         });
                     });
+                    break;
+                case '新增永久图文素材':
+                    const picData =  await wechatApi.uploadPermanentMaterial('image', path.join(__dirname, '../static/images/2.jpg'));
+                    const meida = {
+                        articles: [{
+                            title: '新增永久图文素材标题', 
+                            thumb_media_id: picData.media_id,
+                            author: '36kr',
+                            digest: '图文消息的摘要',
+                            show_cover_pic: 1,
+                            content: '正文',
+                            content_source_url: 'http://36kr.com/',
+                        }]
+                    };
+                    const newsData = await wechatApi.uploadPermanentMaterial('news', meida);
+                    const data = await wechatApi.fetchPermanentMaterial(newsData.media_id);
+                    const item = data.news_item;
+                    const news = item.map((item) => {
+                        return {
+                           title: item.title,
+                           description: item.digest,
+                           picUrl: picData.url,
+                           url: item.url,
+                        }
+                    });
+                    reply = tpl.message.news(message, news);                   
                     break; 
+                case '获取素材总数和列表':
+                    const counts = await wechatApi.countPermanentMaterial();
+                    console.log(counts);
+                    const list1 = await wechatApi.batchPermanentMaterial({
+                        type: 'image',
+                        offset: 0,
+                        count: 10,
+                    });
+                    const list2 = await wechatApi.batchPermanentMaterial({
+                        type: 'video',
+                        offset: 0,
+                        count: 10,
+                    });
+                    const list3 = await wechatApi.batchPermanentMaterial({
+                        type: 'voice',
+                        offset: 0,
+                        count: 10,
+                    });
+                    const list4 = await wechatApi.batchPermanentMaterial({
+                        type: 'news',
+                        offset: 0,
+                        count: 10,
+                    });
+                    console.log(list1,list2,list3,list4);
+                    break;
                 default:
                     console.log('其他回复');
             }

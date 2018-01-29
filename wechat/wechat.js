@@ -3,19 +3,7 @@
 const request = require('request'); // request 是一个发送http请求的库
 const fs = require('fs');
 const _ = require('lodash');
-
-const prefix = 'https://api.weixin.qq.com/cgi-bin/';
-const api = {
-    accessToken: `${prefix}token?grant_type=client_credential`,
-    temporary: {
-        upload: `${prefix}media/upload?`,
-    },
-    permanent: {
-        upload: `${prefix}material/add_material?`, // 其他类型永久素材
-        uploadNews: `${prefix}material/add_news?`, // 永久图文素材
-        uploadNewsPic: `${prefix}media/uploadimg?`, // 图文消息内的图片获取URL
-    }
-};
+const api = require('./api');
 
 function Wechat(opts) {
     this.appID = opts.appID;
@@ -89,7 +77,7 @@ Wechat.prototype.updateAccessToken = function(data) { // 更新票据的方法
     });
 }
 
-Wechat.prototype.uploadtTemporaryMaterial = function(type, filepath) { // 新增临时素材
+Wechat.prototype.uploadTemporaryMaterial = function(type, filepath) { // 新增临时素材
     const that = this;
     const form = {
         media: fs.createReadStream(filepath)
@@ -117,7 +105,7 @@ Wechat.prototype.uploadtTemporaryMaterial = function(type, filepath) { // 新增
     });
 }
 
-Wechat.prototype.uploadtPermanentMaterial = function(type, material, permanent) { // 新增永久素材
+Wechat.prototype.uploadPermanentMaterial = function(type, material, permanent) { // 新增永久素材
     const that = this;
     let form = {};
     let uploadUrl = `${api.permanent.upload}type=${type}&`;
@@ -152,6 +140,408 @@ Wechat.prototype.uploadtPermanentMaterial = function(type, material, permanent) 
                         resolve(body); 
                     } else {
                         throw new Error('upload permanent material fails');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.fetchTemporaryMaterial = function(mediaId, type, permanent) { // 获取临时素材
+    const that = this;
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            let url = `${api.temporary.fetch}access_token=${data.access_token}&media_id=${mediaId}`;
+            if (type === 'video') {
+                url = url.replace('https://', 'http://');
+            }
+            request({method: 'GET', url, json: true}, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('获取临时素材出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.fetchPermanentMaterial = function(mediaId, type, permanent) { // 获取永久素材
+    const that = this;
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            let url = `${api.permanent.fetch}access_token=${data.access_token}`;
+            if (type === 'video') {
+                url = url.replace('https://', 'http://');
+            }
+            const form = {
+                access_token: data.access_token,
+                media_id: mediaId,
+            };
+            request({method: 'POST', url, body: form, json: true}, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('获取永久素材出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.deletePermanentMaterial = function(mediaId) { // 删除永久素材
+    const that = this;
+    const form = {
+        media: mediaId,
+    };
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.permanent.del}access_token=${data.access_token}&media_id=${mediaId}`;
+            request({method: 'POST', url, body: form, json: true}, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('删除永久素材出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.updatePermanentMaterial = function(mediaId, news) { // 修改永久图文素材
+    const that = this;
+    const form = {
+        media: mediaId,
+    };
+    _.extend(form, news);
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.permanent.update}access_token=${data.access_token}&media_id=${mediaId}`;
+            request({method: 'POST', url, body: form, json: true}, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('修改永久图文素材出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.countPermanentMaterial = function() { // 获取素材总数
+    const that = this;
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.permanent.count}access_token=${data.access_token}`;
+            request({method: 'GET', url, json: true}, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('获取素材总数出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.batchPermanentMaterial = function(options) { // 获取素材列表
+    const that = this;
+    options.type = options.type || 'image';
+    options.offset = options.offset || 0;
+    options.count = options.count || 10;
+
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.permanent.batch}access_token=${data.access_token}`;
+            request({ method: 'POST', url, body:options, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('获取素材列表出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.createTags = function(name) { // 创建标签
+    const that = this;
+    const options = {
+        tag: {
+            name,
+        }, 
+    };
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.tags.create}access_token=${data.access_token}`;
+            request({ method: 'POST', url, body:options, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('创建标签出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.getTags = function() { // 获取标签
+    const that = this;
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.tags.get}access_token=${data.access_token}`;
+            request({ method: 'GET', url, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('获取标签出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.updateTags = function(id, name) { // 编辑标签
+    const that = this;
+    const form = {
+        tag: {
+            id,
+            name, 
+        }, 
+    };
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.tags.update}access_token=${data.access_token}`;
+            request({ method: 'POST', url, body:form, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('创建标签出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.deleteTags = function(id) { // 删除标签
+    const that = this;
+    const form = {
+        tag: {
+            id,
+        }, 
+    };
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.tags.delete}access_token=${data.access_token}`;
+            request({ method: 'POST', url, body:form, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('创建标签出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.getUsersTags = function(tagid, openid = '') { // 获取标签下粉丝列表
+    const that = this;
+    const form = {
+        tagid,
+        next_openid: openid, //第一个拉取的OPENID，不填默认从头开始拉取
+    };
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.tags.getUsers}access_token=${data.access_token}`;
+            request({ method: 'GET', url, body:form, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('获取标签下粉丝列表出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.batchtaggingTags = function(openidList, tagid) { // 批量为用户打标签
+    const that = this;
+    const form = {
+        openid_list: openidList, //粉丝列表
+        tagid,
+    };
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.tags.batchtagging}access_token=${data.access_token}`;
+            request({ method: 'POST', url, body:form, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('批量为用户打标签出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.batchuntaggingTags = function(openidList, tagid) { // 批量为用户取消标签
+    const that = this;
+    const form = {
+        openid_list: openidList, //粉丝列表
+        tagid,
+    };
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.tags.batchuntagging}access_token=${data.access_token}`;
+            request({ method: 'POST', url, body:form, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('批量为用户取消标签出错');
+                    }
+                }
+            });
+        })
+        .catch((error) => {
+            console.log(error.message);
+        });
+    })
+    .catch((error) => {
+        console.log(error.message);
+    });
+}
+
+Wechat.prototype.getIdListTags = function(openid) { // 获取用户身上的标签列表
+    const that = this;
+    const form = {
+        openid,
+    };
+    return new Promise(function(resolve, reject) {
+        that.fetchAccessToken()
+        .then((data) => {
+            const url = `${api.tags.getidlist}access_token=${data.access_token}`;
+            request({ method: 'POST', url, body:form, json: true }, (error, response, body) => {
+                if (!error && response.statusCode == 200) {
+                    if (body) {
+                        resolve(body); 
+                    } else {
+                        throw new Error('获取用户身上的标签列表出错');
                     }
                 }
             });
